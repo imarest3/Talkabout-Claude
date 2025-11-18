@@ -34,6 +34,25 @@ backend/
 │   └── statistics/     # Estadísticas y reportes
 ```
 
+### Frontend
+- **Framework**: React 18
+- **UI Library**: Material-UI 5
+- **Routing**: React Router 6
+- **HTTP Client**: Axios
+- **State Management**: Context API
+- **Date Handling**: date-fns
+
+### Estructura Frontend
+```
+frontend/
+├── src/
+│   ├── components/      # Componentes reutilizables
+│   ├── contexts/        # Context API (Auth)
+│   ├── pages/           # Páginas de la aplicación
+│   ├── services/        # API services
+│   └── App.js           # Componente principal
+```
+
 ## Modelo de Datos
 
 ### Entidades Principales
@@ -103,6 +122,7 @@ docker-compose exec backend python manage.py createsuperuser
 ```
 
 6. **Acceder a la aplicación**
+- Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
 - Django Admin: http://localhost:8000/admin
 - API Documentation: http://localhost:8000/api/docs

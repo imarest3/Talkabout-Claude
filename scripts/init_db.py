@@ -1,6 +1,6 @@
 """
 Script to initialize database with sample data for testing.
-Run with: python manage.py shell < scripts/init_db.py
+Run with: docker-compose exec backend python manage.py shell < scripts/init_db.py
 """
 from django.contrib.auth import get_user_model
 from apps.activities.models import Activity
@@ -25,10 +25,16 @@ admin, created = User.objects.get_or_create(
         'is_superuser': True
     }
 )
+# Always set password (even if user already existed)
+admin.set_password('admin123')
+admin.is_staff = True
+admin.is_superuser = True
+admin.role = User.Role.ADMIN
+admin.save()
 if created:
-    admin.set_password('admin123')
-    admin.save()
     print(f"✓ Created admin user: {admin.username}")
+else:
+    print(f"✓ Updated admin user: {admin.username}")
 
 # Create teachers
 teacher1, created = User.objects.get_or_create(
@@ -40,10 +46,14 @@ teacher1, created = User.objects.get_or_create(
         'last_name': 'García'
     }
 )
+# Always set password
+teacher1.set_password('teacher123')
+teacher1.role = User.Role.TEACHER
+teacher1.save()
 if created:
-    teacher1.set_password('teacher123')
-    teacher1.save()
     print(f"✓ Created teacher: {teacher1.username}")
+else:
+    print(f"✓ Updated teacher: {teacher1.username}")
 
 teacher2, created = User.objects.get_or_create(
     username='teacher2',
@@ -54,10 +64,14 @@ teacher2, created = User.objects.get_or_create(
         'last_name': 'Martínez'
     }
 )
+# Always set password
+teacher2.set_password('teacher123')
+teacher2.role = User.Role.TEACHER
+teacher2.save()
 if created:
-    teacher2.set_password('teacher123')
-    teacher2.save()
     print(f"✓ Created teacher: {teacher2.username}")
+else:
+    print(f"✓ Updated teacher: {teacher2.username}")
 
 # Create students
 students = []
@@ -71,10 +85,14 @@ for i in range(1, 11):
             'last_name': f'{i}'
         }
     )
+    # Always set password
+    student.set_password('student123')
+    student.role = User.Role.STUDENT
+    student.save()
     if created:
-        student.set_password('student123')
-        student.save()
         print(f"✓ Created student: {student.username}")
+    else:
+        print(f"✓ Updated student: {student.username}")
     students.append(student)
 
 print("\nCreating sample activities...")
@@ -199,6 +217,7 @@ print(f"Admin:    username=admin    password=admin123")
 print(f"Teacher:  username=teacher1 password=teacher123")
 print(f"Student:  username=student1 password=student123")
 print("\nAccess:")
+print(f"Frontend: http://localhost:3000")
 print(f"API: http://localhost:8000/api/")
 print(f"Admin: http://localhost:8000/admin/")
 print(f"Docs: http://localhost:8000/api/docs/")

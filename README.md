@@ -173,6 +173,54 @@ celery -A talkabout worker -l info
 celery -A talkabout beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 ```
 
+## 🔍 Diagnóstico y Solución de Problemas
+
+Si encuentras errores al iniciar el proyecto, utiliza el script de diagnóstico:
+
+```bash
+./diagnose_project.sh
+```
+
+Este script verificará:
+- ✅ Estructura de directorios y archivos
+- ✅ Variables de entorno (.env)
+- ✅ Apps de Django y migraciones
+- ✅ Estado de Docker y contenedores
+- ✅ Conexión a base de datos PostgreSQL
+- ✅ Configuración de Django
+
+El script genera un reporte detallado con:
+- **Problemas identificados** con códigos de color
+- **Soluciones sugeridas** para cada problema
+- **Archivo de log** con el diagnóstico completo
+
+### Error Común: `relation "users_user" does not exist`
+
+Si ves este error, significa que las migraciones no se han aplicado. **Solución automática:**
+
+```bash
+./setup_from_scratch.sh
+```
+
+Este script:
+1. Limpia servicios anteriores
+2. Crea las migraciones de Django
+3. Aplica las migraciones a la BD
+4. Carga usuarios de prueba
+5. Verifica que todo funcione
+
+**Cuentas de prueba creadas:**
+- Admin: `admin` / `admin123`
+- Profesor: `teacher1` / `teacher123`
+- Estudiante: `student1` / `student123`
+
+Para más información sobre diagnósticos, consulta: [DIAGNOSTICS.md](DIAGNOSTICS.md)
+
+Para solución de problemas específicos:
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Problemas generales
+- [AUTHENTICATION_TROUBLESHOOTING.md](AUTHENTICATION_TROUBLESHOOTING.md) - Problemas de autenticación
+- [DATABASE_NOT_INITIALIZED.md](DATABASE_NOT_INITIALIZED.md) - Problemas de base de datos
+
 ## API Endpoints
 
 ### Autenticación

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #FF9800;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border: 1px solid #ddd;
+        }
+        .highlight {
+            background-color: #FFF3E0;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #FF9800;
+        }
+        .footer {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔔 Recordatorio</h1>
+    </div>
+    <div class="content">
+        <p>Hola <strong>{{ user_name }}</strong>,</p>
+
+        <div class="highlight">
+            <h3>La actividad "{{ activity_title }}" es mañana</h3>
+            <p><strong>Fecha y hora:</strong> {{ event_start_time|date:"d/m/Y H:i" }} ({{ user_timezone }})</p>
+        </div>
+
+        <p>Asegúrate de estar preparado para la actividad. Recibirás otro recordatorio con el enlace de acceso unos minutos antes del inicio.</p>
+
+        <p>Si ya no puedes asistir, por favor <a href="{{ decline_url }}">haz clic aquí</a> para notificarnos.</p>
+
+        <div class="footer">
+            <p>Si deseas darte de baja del sistema, <a href="{{ unsubscribe_url }}">haz clic aquí</a>.</p>
+            <p>---<br>Talkabout - Sistema de gestión de actividades</p>
+        </div>
+    </div>
+</body>
+</html>

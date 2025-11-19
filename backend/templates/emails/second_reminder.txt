@@ -1,0 +1,15 @@
+Hola {{ user_name }},
+
+¡La actividad "{{ activity_title }}" comienza en breve!
+
+Fecha y hora: {{ event_start_time|date:"d/m/Y H:i" }} ({{ user_timezone }})
+
+Para unirte a la actividad, haz clic en el siguiente enlace:
+{{ waiting_room_url }}
+
+El enlace te llevará a una sala de espera donde esperaremos a que se unan otros participantes. Una vez que todos estén listos, te asignaremos a una videoconferencia.
+
+¡Nos vemos pronto!
+
+---
+Talkabout - Sistema de gestión de actividades

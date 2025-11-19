@@ -69,6 +69,19 @@ class User(AbstractUser):
         verbose_name=_('Notificaciones por Email')
     )
 
+    # Privacy and data management
+    is_anonymized = models.BooleanField(
+        default=False,
+        verbose_name=_('Anonimizado'),
+        help_text=_('Si el usuario ha solicitado darse de baja del sistema')
+    )
+
+    anonymized_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Anonimizado el')
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -103,3 +116,34 @@ class User(AbstractUser):
         if self.is_superuser:
             self.role = self.Role.ADMIN
         super().save(*args, **kwargs)
+
+    def anonymize(self):
+        """
+        Anonymize user data while preserving statistics.
+        Changes email to a non-identifiable value and sets external_id to internal code.
+        """
+        from django.utils import timezone
+
+        if self.is_anonymized:
+            return
+
+        # Generate internal anonymized code
+        anonymized_code = f"ANONYMIZED_{self.user_code}"
+
+        # Clear personal data
+        self.email = f"anonymized_{self.user_code}@deleted.local"
+        self.external_id = anonymized_code
+        self.first_name = ""
+        self.last_name = ""
+        self.phone = ""
+        self.username = f"anonymized_{self.user_code}"
+
+        # Mark as anonymized
+        self.is_anonymized = True
+        self.anonymized_at = timezone.now()
+        self.email_notifications = False
+        self.is_active = False
+
+        self.save()
+
+        return True

@@ -1,0 +1,14 @@
+Hola {{ user_name }},
+
+Recordatorio: La actividad "{{ activity_title }}" es mañana.
+
+Fecha y hora: {{ event_start_time|date:"d/m/Y H:i" }} ({{ user_timezone }})
+
+Asegúrate de estar preparado para la actividad.
+
+Si ya no puedes asistir: {{ decline_url }}
+
+Darse de baja del sistema: {{ unsubscribe_url }}
+
+---
+Talkabout - Sistema de gestión de actividades

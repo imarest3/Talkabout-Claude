@@ -2,7 +2,7 @@
 Serializers for Activity models.
 """
 from rest_framework import serializers
-from .models import Activity, ActivityFile
+from .models import Activity, ActivityFile, WaitingRoom, WaitingRoomJoin
 
 
 class ActivityFileSerializer(serializers.ModelSerializer):
@@ -23,11 +23,13 @@ class ActivitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Activity
         fields = [
-            'id', 'title', 'description', 'created_by', 'created_by_name',
-            'max_participants_per_meeting', 'min_participants_per_meeting',
+            'id', 'activity_code', 'title', 'description', 'description_html',
+            'created_by', 'created_by_name', 'max_participants_per_meeting',
+            'min_participants_per_meeting', 'waiting_time_minutes',
+            'first_reminder_hours', 'second_reminder_minutes',
             'is_active', 'files', 'event_count', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'activity_code', 'created_by', 'created_at', 'updated_at']
 
     def get_event_count(self, obj):
         return obj.events.count()
@@ -81,3 +83,30 @@ class ActivityListSerializer(serializers.ModelSerializer):
 
     def get_event_count(self, obj):
         return obj.events.count()
+
+
+class WaitingRoomSerializer(serializers.ModelSerializer):
+    """Serializer for WaitingRoom model."""
+    event_title = serializers.CharField(source='event.activity.title', read_only=True)
+    participant_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = WaitingRoom
+        fields = [
+            'id', 'event', 'event_title', 'access_token', 'status',
+            'opens_at', 'closes_at', 'participant_count', 'created_at'
+        ]
+        read_only_fields = ['id', 'access_token', 'created_at']
+
+
+class WaitingRoomJoinSerializer(serializers.ModelSerializer):
+    """Serializer for WaitingRoomJoin model."""
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+
+    class Meta:
+        model = WaitingRoomJoin
+        fields = [
+            'id', 'user', 'user_name', 'waiting_room', 'joined_at',
+            'ip_address', 'user_agent'
+        ]
+        read_only_fields = ['id', 'joined_at']

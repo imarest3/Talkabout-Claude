@@ -1,0 +1,14 @@
+Hola {{ user_name }},
+
+Tu inscripción a la actividad "{{ activity_title }}" ha sido cancelada.
+
+Detalles:
+- Actividad: {{ activity_title }}
+- Fecha programada: {{ event_start_time|date:"d/m/Y H:i" }} ({{ user_timezone }})
+
+Este correo incluye un archivo de cancelación (.ics) que actualizará tu calendario automáticamente.
+
+Gracias por tu interés.
+
+---
+Talkabout - Sistema de gestión de actividades

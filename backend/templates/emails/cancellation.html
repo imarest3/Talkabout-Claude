@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #9E9E9E;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border: 1px solid #ddd;
+        }
+        .info-box {
+            background-color: #FAFAFA;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #9E9E9E;
+        }
+        .footer {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Inscripción Cancelada</h1>
+    </div>
+    <div class="content">
+        <p>Hola <strong>{{ user_name }}</strong>,</p>
+
+        <p>Tu inscripción a la actividad <strong>"{{ activity_title }}"</strong> ha sido cancelada.</p>
+
+        <div class="info-box">
+            <p><strong>Actividad:</strong> {{ activity_title }}</p>
+            <p><strong>Fecha programada:</strong> {{ event_start_time|date:"d/m/Y H:i" }} ({{ user_timezone }})</p>
+        </div>
+
+        <p>Este correo incluye un archivo de cancelación (.ics) que actualizará tu calendario automáticamente.</p>
+
+        <p>Gracias por tu interés.</p>
+
+        <div class="footer">
+            <p>---<br>Talkabout - Sistema de gestión de actividades</p>
+        </div>
+    </div>
+</body>
+</html>

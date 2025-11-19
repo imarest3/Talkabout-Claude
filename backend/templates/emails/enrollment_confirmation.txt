@@ -1,0 +1,23 @@
+Hola {{ user_name }},
+
+¡Te has inscrito exitosamente en la actividad "{{ activity_title }}"!
+
+Detalles del evento:
+- Actividad: {{ activity_title }}
+- Fecha y hora: {{ event_start_time|date:"d/m/Y H:i" }} ({{ user_timezone }})
+
+{{ activity_description }}
+
+Este correo incluye un archivo de calendario (.ics) que puedes agregar a tu calendario (Google Calendar, Outlook, etc.).
+
+Puedes gestionar tu participación:
+- Confirmar asistencia: {{ accept_url }}
+- Marcar como tentativo: {{ tentative_url }}
+- No asistiré: {{ decline_url }}
+
+Recibirás recordatorios antes del evento.
+
+Si deseas darte de baja del sistema: {{ unsubscribe_url }}
+
+---
+Talkabout - Sistema de gestión de actividades

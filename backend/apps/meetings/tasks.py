@@ -4,132 +4,144 @@ Celery tasks for meetings.
 from celery import shared_task
 from django.utils import timezone
 from django.conf import settings
-from django.core.mail import send_mail
 from datetime import timedelta
-from .models import Meeting
-from .services import MeetingService
+from .models import Meeting, Attendance
+from .services import UserDistributionService, VideoConferenceService
 from apps.events.models import Event
+from apps.activities.models import WaitingRoom, WaitingRoomJoin
 from apps.enrollments.models import Enrollment
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
-def start_scheduled_meetings():
+def check_and_process_waiting_rooms():
     """
-    Check for events that should start now and create meetings.
+    Check for waiting rooms that should close and create meetings.
     Runs every minute via Celery Beat.
     """
     now = timezone.now()
-    start_window = now + timedelta(seconds=settings.MEETING_START_CHECK_INTERVAL)
 
-    # Get events that should start soon and haven't been processed
-    events = Event.objects.filter(
-        status__in=[Event.Status.SCHEDULED, Event.Status.NOTIFIED],
-        start_time__lte=start_window,
-        start_time__gte=now
-    )
+    # Get waiting rooms that should close
+    waiting_rooms = WaitingRoom.objects.filter(
+        status=WaitingRoom.Status.WAITING,
+        closes_at__lte=now
+    ).select_related('event', 'event__activity')
 
-    for event in events:
-        # Check if meetings already created
-        if event.meetings.exists():
-            continue
-
-        create_meetings_for_event.delay(event.id)
+    for waiting_room in waiting_rooms:
+        process_waiting_room.delay(waiting_room.id)
 
 
 @shared_task
-def create_meetings_for_event(event_id, platform='JITSI'):
+def process_waiting_room(waiting_room_id):
     """
-    Create meetings for an event and notify participants.
+    Process a waiting room: distribute users and create meetings.
 
     Args:
-        event_id: ID of the event
-        platform: Platform to use (JITSI or GOOGLE_MEET)
+        waiting_room_id: ID of the waiting room
     """
     try:
-        event = Event.objects.get(id=event_id)
+        waiting_room = WaitingRoom.objects.get(id=waiting_room_id)
+
+        # Mark as processing
+        waiting_room.status = WaitingRoom.Status.PROCESSING
+        waiting_room.save()
+
+        event = waiting_room.event
+        activity = event.activity
+
+        # Get users who joined the waiting room
+        joins = WaitingRoomJoin.objects.filter(
+            waiting_room=waiting_room
+        ).select_related('user').values_list('user_id', flat=True)
+
+        participant_ids = list(joins)
+
+        if not participant_ids:
+            logger.warning(f"No participants in waiting room {waiting_room_id}")
+            waiting_room.status = WaitingRoom.Status.CANCELLED
+            waiting_room.processed_at = timezone.now()
+            waiting_room.save()
+            return
+
+        # Distribute users into groups
+        groups = UserDistributionService.distribute_users(
+            user_ids=participant_ids,
+            max_participants=activity.max_participants_per_meeting,
+            min_participants=activity.min_participants_per_meeting
+        )
+
+        if not groups:
+            logger.warning(f"Could not create valid groups for waiting room {waiting_room_id}")
+            waiting_room.status = WaitingRoom.Status.CANCELLED
+            waiting_room.processed_at = timezone.now()
+            waiting_room.save()
+            return
+
+        # Create meetings for each group
+        meetings_created = []
+        platform = 'JITSI'  # Default platform
+
+        for group_index, group_user_ids in enumerate(groups):
+            # Create meeting
+            meeting_title = f"{activity.title} - Grupo {group_index + 1}"
+
+            # Create videoconference
+            vc_result = VideoConferenceService.create_meeting(
+                platform=platform,
+                meeting_title=meeting_title
+            )
+
+            if not vc_result['success']:
+                logger.error(f"Failed to create videoconference: {vc_result.get('error')}")
+                continue
+
+            # Create Meeting record
+            meeting = Meeting.objects.create(
+                event=event,
+                platform=platform,
+                meeting_url=vc_result['meeting_url'],
+                meeting_id=vc_result['meeting_id'],
+                status=Meeting.Status.STARTED,
+                max_participants=activity.max_participants_per_meeting,
+                platform_data=vc_result.get('platform_data', {}),
+                started_at=timezone.now()
+            )
+
+            # Add participants to meeting
+            for user_id in group_user_ids:
+                Attendance.objects.create(
+                    user_id=user_id,
+                    meeting=meeting,
+                    joined_at=timezone.now()
+                )
+
+            meetings_created.append(meeting)
+            logger.info(f"Created meeting {meeting.id} with {len(group_user_ids)} participants")
+
+        # Mark waiting room as completed
+        waiting_room.status = WaitingRoom.Status.COMPLETED
+        waiting_room.processed_at = timezone.now()
+        waiting_room.save()
 
         # Update event status
         event.status = Event.Status.IN_PROGRESS
         event.save()
 
-        # Create meetings
-        meetings = MeetingService.create_meetings_for_event(
-            event=event,
-            platform=platform
-        )
+        logger.info(f"Processed waiting room {waiting_room_id}: created {len(meetings_created)} meetings")
 
-        if not meetings:
-            # No meetings created (not enough participants)
-            return
-
-        # Send meeting links to participants
-        for meeting in meetings:
-            send_meeting_link_to_participants.delay(meeting.id)
-
-    except Event.DoesNotExist:
-        pass
+    except WaitingRoom.DoesNotExist:
+        logger.error(f"Waiting room {waiting_room_id} not found")
     except Exception as e:
-        print(f"Error creating meetings for event {event_id}: {str(e)}")
-
-
-@shared_task
-def send_meeting_link_to_participants(meeting_id):
-    """
-    Send meeting link to all participants.
-
-    Args:
-        meeting_id: ID of the meeting
-    """
-    try:
-        meeting = Meeting.objects.get(id=meeting_id)
-
-        # Get participants who are enrolled and want notifications
-        enrollments = Enrollment.objects.filter(
-            event=meeting.event,
-            is_active=True,
-            user__email_notifications=True
-        ).select_related('user')
-
-        # In a real implementation, you'd want to assign specific users to specific meetings
-        # For now, we'll send the link to all enrolled users
-        recipients = [enrollment.user.email for enrollment in enrollments]
-
-        if not recipients:
-            return
-
-        subject = f"¡Tu reunión está lista! - {meeting.event.activity.title}"
-
-        message = f"""
-Hola,
-
-Tu reunión de conversación está lista:
-
-Actividad: {meeting.event.activity.title}
-Hora de inicio: {meeting.event.start_time.strftime('%d/%m/%Y a las %H:%M')}
-Plataforma: {meeting.get_platform_display()}
-
-Enlace a la reunión:
-{meeting.meeting_url}
-
-Haz clic en el enlace para unirte a la videoconferencia.
-
-¡Disfruta de la conversación!
-
-Equipo de Talkabout
-"""
-
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=recipients,
-            fail_silently=False,
-        )
-
-    except Meeting.DoesNotExist:
-        pass
-    except Exception as e:
-        print(f"Error sending meeting link for meeting {meeting_id}: {str(e)}")
+        logger.error(f"Error processing waiting room {waiting_room_id}: {str(e)}")
+        # Mark as failed
+        try:
+            waiting_room = WaitingRoom.objects.get(id=waiting_room_id)
+            waiting_room.status = WaitingRoom.Status.CANCELLED
+            waiting_room.save()
+        except:
+            pass
 
 
 @shared_task
@@ -143,15 +155,45 @@ def complete_finished_meetings():
     meetings = Meeting.objects.filter(
         status=Meeting.Status.STARTED,
         event__end_time__lt=now
-    )
+    ).select_related('event')
 
     for meeting in meetings:
         meeting.status = Meeting.Status.COMPLETED
         meeting.completed_at = now
         meeting.save()
+        logger.info(f"Marked meeting {meeting.id} as completed")
 
-        # Update event status
-        event = meeting.event
-        if event.meetings.filter(status=Meeting.Status.STARTED).count() == 0:
+    # Check if all meetings for events are completed
+    events = Event.objects.filter(
+        status=Event.Status.IN_PROGRESS,
+        end_time__lt=now
+    )
+
+    for event in events:
+        # Check if all meetings are completed
+        if not event.meetings.filter(status=Meeting.Status.STARTED).exists():
             event.status = Event.Status.COMPLETED
             event.save()
+            logger.info(f"Marked event {event.id} as completed")
+
+
+@shared_task
+def cleanup_old_waiting_rooms():
+    """
+    Clean up old waiting rooms that were never processed.
+    Runs daily via Celery Beat.
+    """
+    cutoff_time = timezone.now() - timedelta(days=1)
+
+    waiting_rooms = WaitingRoom.objects.filter(
+        status=WaitingRoom.Status.WAITING,
+        closes_at__lt=cutoff_time
+    )
+
+    count = waiting_rooms.count()
+    waiting_rooms.update(
+        status=WaitingRoom.Status.CANCELLED,
+        processed_at=timezone.now()
+    )
+
+    logger.info(f"Cleaned up {count} old waiting rooms")

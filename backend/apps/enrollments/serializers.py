@@ -2,7 +2,7 @@
 Serializers for Enrollment models.
 """
 from rest_framework import serializers
-from .models import Enrollment
+from .models import Enrollment, EmailNotification
 from apps.events.serializers import EventListSerializer
 from apps.users.serializers import UserSerializer
 
@@ -79,3 +79,27 @@ class EnrollmentListSerializer(serializers.ModelSerializer):
             'id', 'user', 'user_name', 'event', 'event_title',
             'event_start_time', 'is_active', 'enrolled_at'
         ]
+
+
+class EmailNotificationSerializer(serializers.ModelSerializer):
+    """Serializer for EmailNotification model."""
+    enrollment_detail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EmailNotification
+        fields = [
+            'id', 'token', 'enrollment', 'enrollment_detail',
+            'notification_type', 'recipient_email', 'subject',
+            'sent', 'sent_at', 'error_message',
+            'user_responded', 'user_response', 'responded_at',
+            'created_at'
+        ]
+        read_only_fields = [
+            'id', 'token', 'sent_at', 'responded_at', 'created_at'
+        ]
+
+    def get_enrollment_detail(self, obj):
+        return {
+            'user': obj.enrollment.user.get_full_name(),
+            'event': str(obj.enrollment.event)
+        }
